@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*py[cod]
+*.py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+backend/venv/
+
+# Database
+*.db
+*.sqlite3
+bakend/data/finance.db
+
+# CVS files - real bank data
+backend/data/*.csv
+backend/data/uploads/*
+!backend/data/uploads/.gitkeep
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node.js (frontend)
+node_modules/
+dist/
+.cache/
+*.log
+
+# Build files
+build/
+*.egg-info/
