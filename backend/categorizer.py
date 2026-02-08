@@ -8,15 +8,23 @@ def categorize_transaction(description, merchant):
     text = (description + ' ' + (merchant or '')).lower()
 
     # dining
-    food_keywords = ['restaurant', 'cafe', 'coffee', 'dining', 'starbucks', 'dunkin', 
-                     'mcdonald', 'pizza', 'burger', 'subway', 'chipotle', 'food', 
-                     'bar', 'bakery', 'doordash', 'ubereats', 'grubhub', 'postmates']
+    food_keywords = [
+        'restaurant', 'cafe', 'coffee', 'dining', 'starbucks', 'dunkin', 
+        'mcdonald', 'pizza', 'burger', 'subway', 'chipotle', 'food', 
+        'bar', 'bakery', 'doordash', 'ubereats', 'grubhub', 'postmates',
+        # ADDITIONS based on my actual data:
+        'noodle', 'noodles', 'dumpling', 'hot pot', 'beef', 'poke',
+        'ai ki ya', 'jollibee', 'chahalo', 'chief beef', 'guo bao',
+        'mala hotpot', 'teapsy', 'kung fu tea', 'hi tea', 'flower and dessert',
+        'popeyes', 'wegmans', 'schine', 'fantuan', 'chowbus']
     if any(k in text for k in food_keywords):
         return 'Food & Dining'
     
     # shopping
     shopping_keywords = ['amazon', 'target', 'walmart', 'best buy', 'costco', 'store',
-                         'mall', 'shop', 'retail', 'market', 'grocery']
+                         'mall', 'shop', 'retail', 'market', 'grocery',
+                         # Additions based on my actual data:
+                         'uniqlo', 'miniso', 'jewelry', 'luk fook', 'loewe', 'arcteryx',]
     if any(k in text for k in shopping_keywords):
         return 'Shopping'
     
@@ -34,7 +42,7 @@ def categorize_transaction(description, merchant):
     
     # utilities
     bills_keywords = ['electric', 'water', 'internet', 'phone', 'utility',
-                      'insurance', 'rent', 'payment']
+        'insurance', 'rent', 'payment', 'ach deposit','anthropic']
     if any(k in text for k in bills_keywords):
         return 'Bills & Utilities'
     

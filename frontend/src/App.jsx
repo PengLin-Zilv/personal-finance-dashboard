@@ -26,6 +26,10 @@ function App() {
     )
   }
 
+  // Sort categories by amount (highest to lowest)
+  const sortedCategories = [...data.category_breakdown]
+    .sort((a, b) => b.amount - a.amount)
+
   return (
     <div style={styles.app}>
       {/* Sidebar */}
@@ -49,7 +53,7 @@ function App() {
         </nav>
       </aside>
 
-      {/* Main content - full width */}
+      {/* Main content */}
       <main style={styles.main}>
         {/* Top bar */}
         <div style={styles.topBar}>
@@ -66,60 +70,112 @@ function App() {
           </div>
         </div>
 
-        {/* Stats cards - full width grid */}
-        <div style={styles.cards}>
-          {/* Spending Card */}
-          <div style={styles.card}>
-            <div style={styles.cardTop}>
-              <span style={styles.cardLabel}>Total Spending</span>
-              <div style={styles.badgeRed}>↓ Expense</div>
-            </div>
-            <p style={styles.cardValueRed}>
-              ${data.total_spending.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })}
-            </p>
-            <div style={styles.cardFooter}>
-              <span style={styles.cardChange}>Last 30 days</span>
-            </div>
-          </div>
-
-          {/* Income Card */}
-          <div style={styles.card}>
-            <div style={styles.cardTop}>
-              <span style={styles.cardLabel}>Total Income</span>
-              <div style={styles.badgeGreen}>↑ Income</div>
-            </div>
-            <p style={styles.cardValueGreen}>
-              ${data.total_income.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })}
-            </p>
-            <div style={styles.cardFooter}>
-              <span style={styles.cardChange}>Last 30 days</span>
-            </div>
-          </div>
-
-          {/* Net Balance Card */}
-          <div style={styles.card}>
-            <div style={styles.cardTop}>
-              <span style={styles.cardLabel}>Net Balance</span>
-              <div style={data.net >= 0 ? styles.badgeGreen : styles.badgeRed}>
-                {data.net >= 0 ? '✓ Positive' : '! Negative'}
+        {/* Content area with scroll */}
+        <div style={styles.content}>
+          {/* Stats cards */}
+          <div style={styles.cards}>
+            {/* Spending Card */}
+            <div style={styles.card}>
+              <div style={styles.cardTop}>
+                <span style={styles.cardLabel}>Total Spending</span>
+                <div style={styles.badgeRed}>↓ Expense</div>
+              </div>
+              <p style={styles.cardValueRed}>
+                ${data.total_spending.toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}
+              </p>
+              <div style={styles.cardFooter}>
+                <span style={styles.cardChange}>Last 30 days</span>
               </div>
             </div>
-            <p style={data.net >= 0 ? styles.cardValueGreen : styles.cardValueRed}>
-              {data.net >= 0 ? '+' : ''}${Math.abs(data.net).toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })}
-            </p>
-            <div style={styles.cardFooter}>
-              <span style={styles.cardChange}>
-                {data.net >= 0 ? 'Good standing' : 'Review budget'}
+
+            {/* Income Card */}
+            <div style={styles.card}>
+              <div style={styles.cardTop}>
+                <span style={styles.cardLabel}>Total Income</span>
+                <div style={styles.badgeGreen}>↑ Income</div>
+              </div>
+              <p style={styles.cardValueGreen}>
+                ${data.total_income.toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}
+              </p>
+              <div style={styles.cardFooter}>
+                <span style={styles.cardChange}>Last 30 days</span>
+              </div>
+            </div>
+
+            {/* Net Balance Card */}
+            <div style={styles.card}>
+              <div style={styles.cardTop}>
+                <span style={styles.cardLabel}>Net Balance</span>
+                <div style={data.net >= 0 ? styles.badgeGreen : styles.badgeRed}>
+                  {data.net >= 0 ? '✓ Positive' : '! Negative'}
+                </div>
+              </div>
+              <p style={data.net >= 0 ? styles.cardValueGreen : styles.cardValueRed}>
+                {data.net >= 0 ? '+' : ''}${Math.abs(data.net).toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}
+              </p>
+              <div style={styles.cardFooter}>
+                <span style={styles.cardChange}>
+                  {data.net >= 0 ? 'Good standing' : 'Review budget'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* NEW: Category Breakdown Section */}
+          <div style={styles.section}>
+            <div style={styles.sectionHeader}>
+              <h3 style={styles.sectionTitle}>Spending by Category</h3>
+              <span style={styles.sectionSubtitle}>
+                {sortedCategories.length} categories
               </span>
+            </div>
+
+            {/* Category list */}
+            <div style={styles.categoryList}>
+              {sortedCategories.map((category, index) => {
+                const percentage = ((category.amount / data.total_spending) * 100).toFixed(1)
+                
+                return (
+                  <div key={index} style={styles.categoryItem}>
+                    {/* Left: Category name and amount */}
+                    <div style={styles.categoryLeft}>
+                      <div style={styles.categoryInfo}>
+                        <span style={styles.categoryName}>{category.category}</span>
+                        <span style={styles.categoryAmount}>
+                          ${category.amount.toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })}
+                        </span>
+                      </div>
+                      
+                      {/* Progress bar */}
+                      <div style={styles.progressBarContainer}>
+                        <div 
+                          style={{
+                            ...styles.progressBar,
+                            width: `${percentage}%`
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Right: Percentage */}
+                    <div style={styles.categoryRight}>
+                      <span style={styles.percentage}>{percentage}%</span>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
@@ -128,9 +184,8 @@ function App() {
   )
 }
 
-// Modern full-screen layout styles
+// Updated styles with category breakdown
 const styles = {
-  // Full screen container with sidebar layout
   app: {
     display: 'flex',
     minHeight: '100vh',
@@ -138,7 +193,7 @@ const styles = {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
 
-  // Left sidebar - fixed
+  // Sidebar styles (unchanged)
   sidebar: {
     width: '240px',
     backgroundColor: '#ffffff',
@@ -189,21 +244,21 @@ const styles = {
     fontSize: '14px',
     fontWeight: '500',
     cursor: 'pointer',
-    transition: 'background-color 0.15s',
   },
   navIcon: {
     fontSize: '18px',
   },
 
-  // Main content area - full width minus sidebar
+  // Main content
   main: {
     flex: 1,
     marginLeft: '240px',
-    padding: '0',
     backgroundColor: '#fafafa',
+    display: 'flex',
+    flexDirection: 'column',
   },
 
-  // Top bar - full width
+  // Top bar (unchanged)
   topBar: {
     backgroundColor: '#ffffff',
     borderBottom: '1px solid #e5e7eb',
@@ -225,15 +280,21 @@ const styles = {
     margin: 0,
   },
 
-  // Cards grid - full width with padding
+  // NEW: Scrollable content area
+  content: {
+    padding: '32px 40px',
+    overflowY: 'auto',
+  },
+
+  // Cards grid
   cards: {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
     gap: '24px',
-    padding: '32px 40px',
+    marginBottom: '32px',
   },
 
-  // Card styling - cleaner, more modern
+  // Card styles (unchanged)
   card: {
     backgroundColor: '#ffffff',
     border: '1px solid #e5e7eb',
@@ -254,8 +315,6 @@ const styles = {
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
   },
-
-  // Badges instead of icons
   badgeRed: {
     fontSize: '11px',
     fontWeight: '600',
@@ -276,8 +335,6 @@ const styles = {
     textTransform: 'uppercase',
     letterSpacing: '0.3px',
   },
-
-  // Card values
   cardValueRed: {
     fontSize: '32px',
     fontWeight: '700',
@@ -292,8 +349,6 @@ const styles = {
     margin: '0 0 16px 0',
     letterSpacing: '-1px',
   },
-
-  // Card footer
   cardFooter: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -302,6 +357,101 @@ const styles = {
   cardChange: {
     fontSize: '13px',
     color: '#9ca3af',
+  },
+
+  // NEW: Section container
+  section: {
+    backgroundColor: '#ffffff',
+    border: '1px solid #e5e7eb',
+    borderRadius: '12px',
+    padding: '24px',
+  },
+
+  // NEW: Section header
+  sectionHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '24px',
+    paddingBottom: '16px',
+    borderBottom: '1px solid #f3f4f6',
+  },
+  sectionTitle: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#111827',
+    margin: 0,
+  },
+  sectionSubtitle: {
+    fontSize: '13px',
+    color: '#9ca3af',
+  },
+
+  // NEW: Category list
+  categoryList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
+  },
+
+  // NEW: Individual category item
+  categoryItem: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '20px',
+  },
+
+  // NEW: Left side (name, amount, progress bar)
+  categoryLeft: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+
+  // NEW: Category info (name + amount)
+  categoryInfo: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  categoryName: {
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#374151',
+  },
+  categoryAmount: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#111827',
+  },
+
+  // NEW: Progress bar container
+  progressBarContainer: {
+    height: '8px',
+    backgroundColor: '#f3f4f6',
+    borderRadius: '4px',
+    overflow: 'hidden',
+  },
+
+  // NEW: Progress bar fill
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#3b82f6',
+    borderRadius: '4px',
+    transition: 'width 0.3s ease',
+  },
+
+  // NEW: Right side (percentage)
+  categoryRight: {
+    minWidth: '60px',
+    textAlign: 'right',
+  },
+  percentage: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#6b7280',
   },
 
   // Loading state
