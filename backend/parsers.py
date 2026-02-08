@@ -4,6 +4,23 @@ import pandas as pd
 from dateutil import parser as date_parser
 import json
 
+def transaction_exists(session, transaction_date, description, amount, source):
+    """
+    Check if this exact transaction already exists
+    Prevent duplicates when uploading multiple months
+    """
+
+    from models import Transaction
+    
+    exists = session.query(Transaction).filter(
+        Transaction.transaction_date == transaction_date,
+        Transaction.description == description,
+        Transaction.amount == amount,
+        Transaction.source == source
+    ).first()
+
+    return exists is not None
+
 def parse_apple_card(file_path):
     """
     Parse Apple Card CSV file and return list of transaction dicts
@@ -90,34 +107,39 @@ def parse_boa_credit(file_path):
 
 def parse_and_load_csv(file_path, source_type, session):
     """
-    Generic parse and load function to handle any csv file with the appropriate parser function
-    
-    Args:
-        file_path: path to the csv file
-        source_type: type of the source (e.g. 'apple_card', 'boa_credit')
-        session: SQLAlchemy session 
+    Parse CSV and add to database (skips duplicates)
 
-    Returns:
-        number of transactions successfully loaded
+    Returns: dict with counts: total, new duplicates
     """
 
     from models import Transaction
     from categorizer import categorize_transaction
 
-    # choose the right parser function based on source type
+    # Parse CSV based on bank type
     if source_type == 'apple_card':
         df = parse_apple_card(file_path)
     elif source_type == 'boa_credit':
         df = parse_boa_credit(file_path)
-    else:
+    else: 
         raise ValueError(f'Unknown source type: {source_type}')
     
-    # transform dataframe rows into Transaction objects and add to session
-    count = 0
+    # Track results
+    total_rows = len(df)
+    new_transactions = 0
+    duplicates = 0
+
+    # Process each transaction:
     for _, row in df.iterrows():
-        # auto categorize transaction
-        category = categorize_transaction(row['description'], row['merchant'])
+        # skip if already in database
+        if transaction_exists(session, row['transaction_date'], 
+                              row['description'], row['amount'], row['source']):
+            duplicates += 1
+            continue
         
+        # add new transaction
+
+        category = categorize_transaction(row['description'], row['merchant'])
+
         transaction = Transaction(
             transaction_date=row['transaction_date'],
             description=row['description'],
@@ -128,9 +150,44 @@ def parse_and_load_csv(file_path, source_type, session):
             raw_data=row['raw_data']
         )
         session.add(transaction)
-        count += 1
+        new_transactions += 1
+
     session.commit()
-    return count
+    return {
+        'total': total_rows,
+        'new': new_transactions,
+        'duplicates': duplicates
+    }
+
+
+
+    # # choose the right parser function based on source type
+    # if source_type == 'apple_card':
+    #     df = parse_apple_card(file_path)
+    # elif source_type == 'boa_credit':
+    #     df = parse_boa_credit(file_path)
+    # else:
+    #     raise ValueError(f'Unknown source type: {source_type}')
+    
+    # # transform dataframe rows into Transaction objects and add to session
+    # count = 0
+    # for _, row in df.iterrows():
+    #     # auto categorize transaction
+    #     category = categorize_transaction(row['description'], row['merchant'])
+        
+    #     transaction = Transaction(
+    #         transaction_date=row['transaction_date'],
+    #         description=row['description'],
+    #         merchant=row['merchant'],
+    #         amount=row['amount'],
+    #         category=category,
+    #         source=row['source'],
+    #         raw_data=row['raw_data']
+    #     )
+    #     session.add(transaction)
+    #     count += 1
+    # session.commit()
+    # return count
 
 # Biggest challenge is that different banks have different csv format.
 # Apple card and BOA credit card have different signs and column names

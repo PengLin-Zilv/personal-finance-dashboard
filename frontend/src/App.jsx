@@ -1,20 +1,130 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 
+// Upload Component
+function UploadSection({ onUploadSuccess }) {
+  const [file, setFile] = useState(null)
+  const [bankType, setBankType] = useState('apple_card')
+  const [uploading, setUploading] = useState(false)
+  const [message, setMessage] = useState(null)
+
+  const handleUpload = async (e) => {
+    e.preventDefault()
+    
+    if (!file) {
+      alert('Please select a file first')
+      return
+    }
+
+    setUploading(true)
+    setMessage(null)
+
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('source_type', bankType)
+
+    try {
+      const response = await axios.post('http://localhost:5000/api/upload', formData)
+      
+      setMessage({
+        success: true,
+        text: response.data.message
+      })
+
+      setTimeout(() => {
+        onUploadSuccess()
+        setFile(null)
+        setMessage(null)
+        document.getElementById('fileInput').value = ''
+      }, 1500)
+
+    } catch (error) {
+      setMessage({
+        success: false,
+        text: error.response?.data?.error || 'Upload failed'
+      })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div style={uploadStyles.container}>
+      <div style={uploadStyles.header}>
+        <h3 style={uploadStyles.title}>📤 Upload New Statement</h3>
+        <p style={uploadStyles.subtitle}>Add your monthly transactions</p>
+      </div>
+
+      <form onSubmit={handleUpload} style={uploadStyles.form}>
+        <div style={uploadStyles.row}>
+          <div style={uploadStyles.field}>
+            <label style={uploadStyles.label}>Bank:</label>
+            <select 
+              value={bankType}
+              onChange={(e) => setBankType(e.target.value)}
+              style={uploadStyles.select}
+            >
+              <option value="apple_card">Apple Card</option>
+              <option value="boa_credit">Bank of America</option>
+            </select>
+          </div>
+
+          <div style={uploadStyles.field}>
+            <label style={uploadStyles.label}>CSV File:</label>
+            <input
+              id="fileInput"
+              type="file"
+              accept=".csv"
+              onChange={(e) => setFile(e.target.files[0])}
+              style={uploadStyles.fileInput}
+            />
+          </div>
+
+          <button 
+            type="submit"
+            disabled={!file || uploading}
+            style={!file || uploading ? uploadStyles.buttonDisabled : uploadStyles.button}
+          >
+            {uploading ? '⏳ Uploading...' : '📤 Upload'}
+          </button>
+        </div>
+      </form>
+
+      {message && (
+        <div style={message.success ? uploadStyles.success : uploadStyles.error}>
+          <p style={uploadStyles.messageText}>{message.text}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Main App
 function App() {
   const [data, setData] = useState(null)
+  const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
 
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      const [summaryRes, transRes] = await Promise.all([
+        axios.get('http://localhost:5000/api/summary'),
+        axios.get('http://localhost:5000/api/transactions?limit=1000')
+      ])
+      
+      setData(summaryRes.data)
+      setTransactions(transRes.data.transactions)
+    } catch (err) {
+      alert('Backend not running!')
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    axios.get('http://localhost:5000/api/summary')
-      .then(res => {
-        setData(res.data)
-        setLoading(false)
-      })
-      .catch(err => {
-        alert('Backend not running!')
-        console.error(err)
-      })
+    loadData()
   }, [])
 
   if (loading) {
@@ -26,13 +136,32 @@ function App() {
     )
   }
 
-  // Sort categories by amount (highest to lowest)
+  const getDateRange = () => {
+    if (transactions.length === 0) return 'No data'
+    
+    const dates = transactions.map(t => new Date(t.transaction_date))
+    const earliest = new Date(Math.min(...dates))
+    const latest = new Date(Math.max(...dates))
+    
+    const formatDate = (date) => date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      year: 'numeric' 
+    })
+    
+    if (earliest.getMonth() === latest.getMonth() && 
+        earliest.getFullYear() === latest.getFullYear()) {
+      return formatDate(earliest)
+    } else {
+      return `${formatDate(earliest)} - ${formatDate(latest)}`
+    }
+  }
+
+  const dateRange = getDateRange()
   const sortedCategories = [...data.category_breakdown]
     .sort((a, b) => b.amount - a.amount)
 
   return (
     <div style={styles.app}>
-      {/* Sidebar */}
       <aside style={styles.sidebar}>
         <div style={styles.sidebarHeader}>
           <h1 style={styles.sidebarLogo}>Finance</h1>
@@ -53,9 +182,7 @@ function App() {
         </nav>
       </aside>
 
-      {/* Main content */}
       <main style={styles.main}>
-        {/* Top bar */}
         <div style={styles.topBar}>
           <div>
             <h2 style={styles.pageTitle}>Overview</h2>
@@ -70,11 +197,10 @@ function App() {
           </div>
         </div>
 
-        {/* Content area with scroll */}
         <div style={styles.content}>
-          {/* Stats cards */}
+          {/* 4 Stats Cards */}
           <div style={styles.cards}>
-            {/* Spending Card */}
+            {/* Card 1: Spending */}
             <div style={styles.card}>
               <div style={styles.cardTop}>
                 <span style={styles.cardLabel}>Total Spending</span>
@@ -87,11 +213,11 @@ function App() {
                 })}
               </p>
               <div style={styles.cardFooter}>
-                <span style={styles.cardChange}>Last 30 days</span>
+                <span style={styles.cardChange}>{dateRange}</span>
               </div>
             </div>
 
-            {/* Income Card */}
+            {/* Card 2: Income */}
             <div style={styles.card}>
               <div style={styles.cardTop}>
                 <span style={styles.cardLabel}>Total Income</span>
@@ -104,11 +230,11 @@ function App() {
                 })}
               </p>
               <div style={styles.cardFooter}>
-                <span style={styles.cardChange}>Last 30 days</span>
+                <span style={styles.cardChange}>{dateRange}</span>
               </div>
             </div>
 
-            {/* Net Balance Card */}
+            {/* Card 3: Net Balance */}
             <div style={styles.card}>
               <div style={styles.cardTop}>
                 <span style={styles.cardLabel}>Net Balance</span>
@@ -123,14 +249,27 @@ function App() {
                 })}
               </p>
               <div style={styles.cardFooter}>
-                <span style={styles.cardChange}>
-                  {data.net >= 0 ? 'Good standing' : 'Review budget'}
-                </span>
+                <span style={styles.cardChange}>{dateRange}</span>
+              </div>
+            </div>
+
+            {/* 🆕 Card 4: Total Transactions - NEW CARD HERE */}
+            <div style={styles.card}>
+              <div style={styles.cardTop}>
+                <span style={styles.cardLabel}>Total Transactions</span>
+                <div style={styles.badgeBlue}>📊 Count</div>
+              </div>
+              <p style={styles.cardValueBlue}>
+                {transactions.length}
+              </p>
+              <div style={styles.cardFooter}>
+                <span style={styles.cardChange}>{dateRange}</span>
               </div>
             </div>
           </div>
 
-          {/* NEW: Category Breakdown Section */}
+          <UploadSection onUploadSuccess={loadData} />
+
           <div style={styles.section}>
             <div style={styles.sectionHeader}>
               <h3 style={styles.sectionTitle}>Spending by Category</h3>
@@ -139,14 +278,12 @@ function App() {
               </span>
             </div>
 
-            {/* Category list */}
             <div style={styles.categoryList}>
               {sortedCategories.map((category, index) => {
                 const percentage = ((category.amount / data.total_spending) * 100).toFixed(1)
                 
                 return (
                   <div key={index} style={styles.categoryItem}>
-                    {/* Left: Category name and amount */}
                     <div style={styles.categoryLeft}>
                       <div style={styles.categoryInfo}>
                         <span style={styles.categoryName}>{category.category}</span>
@@ -158,7 +295,6 @@ function App() {
                         </span>
                       </div>
                       
-                      {/* Progress bar */}
                       <div style={styles.progressBarContainer}>
                         <div 
                           style={{
@@ -169,7 +305,6 @@ function App() {
                       </div>
                     </div>
 
-                    {/* Right: Percentage */}
                     <div style={styles.categoryRight}>
                       <span style={styles.percentage}>{percentage}%</span>
                     </div>
@@ -184,7 +319,7 @@ function App() {
   )
 }
 
-// Updated styles with category breakdown
+// Styles
 const styles = {
   app: {
     display: 'flex',
@@ -192,8 +327,6 @@ const styles = {
     backgroundColor: '#fafafa',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
-
-  // Sidebar styles (unchanged)
   sidebar: {
     width: '240px',
     backgroundColor: '#ffffff',
@@ -248,8 +381,6 @@ const styles = {
   navIcon: {
     fontSize: '18px',
   },
-
-  // Main content
   main: {
     flex: 1,
     marginLeft: '240px',
@@ -257,8 +388,6 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
   },
-
-  // Top bar (unchanged)
   topBar: {
     backgroundColor: '#ffffff',
     borderBottom: '1px solid #e5e7eb',
@@ -279,22 +408,16 @@ const styles = {
     color: '#6b7280',
     margin: 0,
   },
-
-  // NEW: Scrollable content area
   content: {
     padding: '32px 40px',
     overflowY: 'auto',
   },
-
-  // Cards grid
   cards: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
+    gridTemplateColumns: 'repeat(4, 1fr)',
     gap: '24px',
     marginBottom: '32px',
   },
-
-  // Card styles (unchanged)
   card: {
     backgroundColor: '#ffffff',
     border: '1px solid #e5e7eb',
@@ -335,6 +458,16 @@ const styles = {
     textTransform: 'uppercase',
     letterSpacing: '0.3px',
   },
+  badgeBlue: {
+    fontSize: '11px',
+    fontWeight: '600',
+    color: '#2563eb',
+    backgroundColor: '#dbeafe',
+    padding: '4px 8px',
+    borderRadius: '6px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.3px',
+  },
   cardValueRed: {
     fontSize: '32px',
     fontWeight: '700',
@@ -349,6 +482,13 @@ const styles = {
     margin: '0 0 16px 0',
     letterSpacing: '-1px',
   },
+  cardValueBlue: {
+    fontSize: '32px',
+    fontWeight: '700',
+    color: '#2563eb',
+    margin: '0 0 16px 0',
+    letterSpacing: '-1px',
+  },
   cardFooter: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -358,16 +498,12 @@ const styles = {
     fontSize: '13px',
     color: '#9ca3af',
   },
-
-  // NEW: Section container
   section: {
     backgroundColor: '#ffffff',
     border: '1px solid #e5e7eb',
     borderRadius: '12px',
     padding: '24px',
   },
-
-  // NEW: Section header
   sectionHeader: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -386,31 +522,23 @@ const styles = {
     fontSize: '13px',
     color: '#9ca3af',
   },
-
-  // NEW: Category list
   categoryList: {
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
   },
-
-  // NEW: Individual category item
   categoryItem: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: '20px',
   },
-
-  // NEW: Left side (name, amount, progress bar)
   categoryLeft: {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
   },
-
-  // NEW: Category info (name + amount)
   categoryInfo: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -426,24 +554,18 @@ const styles = {
     fontWeight: '600',
     color: '#111827',
   },
-
-  // NEW: Progress bar container
   progressBarContainer: {
     height: '8px',
     backgroundColor: '#f3f4f6',
     borderRadius: '4px',
     overflow: 'hidden',
   },
-
-  // NEW: Progress bar fill
   progressBar: {
     height: '100%',
     backgroundColor: '#3b82f6',
     borderRadius: '4px',
     transition: 'width 0.3s ease',
   },
-
-  // NEW: Right side (percentage)
   categoryRight: {
     minWidth: '60px',
     textAlign: 'right',
@@ -453,8 +575,6 @@ const styles = {
     fontWeight: '600',
     color: '#6b7280',
   },
-
-  // Loading state
   loading: {
     display: 'flex',
     flexDirection: 'column',
@@ -475,6 +595,99 @@ const styles = {
     marginTop: '16px',
     color: '#6b7280',
     fontSize: '14px',
+  },
+}
+
+const uploadStyles = {
+  container: {
+    backgroundColor: '#ffffff',
+    border: '1px solid #e5e7eb',
+    borderRadius: '12px',
+    padding: '24px',
+    marginBottom: '24px',
+  },
+  header: {
+    marginBottom: '20px',
+  },
+  title: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#111827',
+    margin: '0 0 4px 0',
+  },
+  subtitle: {
+    fontSize: '13px',
+    color: '#6b7280',
+    margin: 0,
+  },
+  form: {
+    marginBottom: '12px',
+  },
+  row: {
+    display: 'flex',
+    gap: '16px',
+    alignItems: 'flex-end',
+  },
+  field: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  label: {
+    fontSize: '13px',
+    fontWeight: '500',
+    color: '#374151',
+  },
+  select: {
+    padding: '10px 12px',
+    fontSize: '14px',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    backgroundColor: 'white',
+  },
+  fileInput: {
+    padding: '8px',
+    fontSize: '14px',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+  },
+  button: {
+    padding: '10px 24px',
+    fontSize: '14px',
+    fontWeight: '600',
+    color: 'white',
+    backgroundColor: '#3b82f6',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+  },
+  buttonDisabled: {
+    padding: '10px 24px',
+    fontSize: '14px',
+    fontWeight: '600',
+    color: 'white',
+    backgroundColor: '#9ca3af',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'not-allowed',
+  },
+  success: {
+    padding: '12px 16px',
+    backgroundColor: '#d1fae5',
+    border: '1px solid #10b981',
+    borderRadius: '8px',
+  },
+  error: {
+    padding: '12px 16px',
+    backgroundColor: '#fee2e2',
+    border: '1px solid #dc2626',
+    borderRadius: '8px',
+  },
+  messageText: {
+    fontSize: '14px',
+    fontWeight: '500',
+    margin: 0,
   },
 }
 

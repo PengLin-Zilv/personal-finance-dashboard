@@ -1,4 +1,5 @@
 # auto categorization logic
+
 def categorize_transaction(description, merchant):
     """
     auto categorize based on description and merchant info. This is a simple rule-based categorization logic, can be improved with more complex logic or even machine learning in the future. 

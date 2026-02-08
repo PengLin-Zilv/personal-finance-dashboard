@@ -115,41 +115,91 @@ def get_summary():
     finally:
         session.close()
 
-# upload CSV endpoint
+
 @app.route('/api/upload', methods=['POST'])
 def upload_csv():
     """
-    upload and process CSV file
-    file processing and mistake handling
+    Upload new monthly statement
     """
-
+    #check file
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
-    
     file = request.files['file']
     source_type = request.form.get('source_type')
 
+    # Validate source type
+    if not file or file.filename == '':
+        return jsonify({'error': "Please select a file"}), 400
+    
     if not source_type or source_type not in ['apple_card', 'boa_credit']:
         return jsonify({'error': "Invalid or missing source_type"}), 400
     
-    # save files
+    # Save uploaded file
+    import os
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    file_path = f'data/uploads/{source_type}_{timestamp}.csv'
+    upload_dir = 'data/uploads'
+
+    if not os.path.exists(upload_dir):
+        os.makedirs(upload_dir)
+
+    filename = f"{source_type}_{timestamp}.csv"
+    file_path = os.path.join(upload_dir, filename)
     file.save(file_path)
 
-    # parse and load csv
+    # Process file
     session = Session()
     try:
-        count = parse_and_load_csv(file_path, source_type, session)
+        result = parse_and_load_csv(file_path, source_type, session)
         return jsonify({
             'success': True,
-            'message': f'Imported {count} transactions from {source_type}.'
+            'message': f"Added {result['new']} new transactions! ({result['duplicates']} duplicates skipped)",
+            'total': result['total'],
+            'new': result['new'],
+            'duplicates': result['duplicates']              
         })
+
     except Exception as e:
         session.rollback()
         return jsonify({'error': str(e)}), 500
     finally:
         session.close()
+
+
+# # upload CSV endpoint (old one)
+# @app.route('/api/upload', methods=['POST'])
+# def upload_csv():
+#     """
+#     upload and process CSV file
+#     file processing and mistake handling
+#     """
+
+#     if 'file' not in request.files:
+#         return jsonify({'error': 'No file provided'}), 400
+    
+#     file = request.files['file']
+#     source_type = request.form.get('source_type')
+
+#     if not source_type or source_type not in ['apple_card', 'boa_credit']:
+#         return jsonify({'error': "Invalid or missing source_type"}), 400
+    
+#     # save files
+#     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+#     file_path = f'data/uploads/{source_type}_{timestamp}.csv'
+#     file.save(file_path)
+
+#     # parse and load csv
+#     session = Session()
+#     try:
+#         count = parse_and_load_csv(file_path, source_type, session)
+#         return jsonify({
+#             'success': True,
+#             'message': f'Imported {count} transactions from {source_type}.'
+#         })
+#     except Exception as e:
+#         session.rollback()
+#         return jsonify({'error': str(e)}), 500
+#     finally:
+#         session.close()
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
