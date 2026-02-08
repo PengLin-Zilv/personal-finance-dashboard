@@ -26,3 +26,4 @@ Author:
 Peng Lin
 - Syracuse University, Computer Science 
 - Expected Graduation: May 2027 
+<img width="2531" height="1362" alt="image" src="https://github.com/user-attachments/assets/8ce926eb-3ab3-4bda-bf20-f869f683644f" />
